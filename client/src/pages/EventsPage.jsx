@@ -1,116 +1,164 @@
-import { useEffect, useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import axiosClient from "../api/axiosClient";
+import { useState } from "react";
+import { useSelector } from "react-redux";
+import { useSearchParams } from "react-router-dom";
 import EventCard from "../components/EventCard";
 import EventForm from "../components/EventForm";
-import { useAuth } from "../context/AuthContext";
-import {
-  setEvents,
-  setEventsError,
-  setEventsLoading,
-} from "../redux/eventsSlice";
+import { EVENT_TYPES } from "../constants";
+import useLoadEvents from "../hooks/useLoadEvents";
+
+const PERIODS = [
+  { value: "all", label: "All dates" },
+  { value: "upcoming", label: "Upcoming" },
+  { value: "past", label: "Past" },
+];
 
 export default function EventsPage() {
-  const dispatch = useDispatch();
-  const { user } = useAuth();
-  const { items: events, loading, error } = useSelector((state) => state.events);
-  const [selectedType, setSelectedType] = useState("all");
+  const { user } = useSelector((state) => state.auth);
+  const { items: events, loading, error } = useLoadEvents();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [search, setSearch] = useState("");
+  const [showForm, setShowForm] = useState(false);
 
-  // Fetch public events when the page loads.
-  useEffect(() => {
-    let isCurrent = true;
+  const selectedType = searchParams.get("type") || "all";
+  const period = searchParams.get("period") || "all";
 
-    async function loadEvents() {
-      dispatch(setEventsError(null));
-      dispatch(setEventsLoading(true));
-
-      try {
-        const response = await axiosClient.get("/events");
-        if (isCurrent) {
-          dispatch(setEvents(response.data));
-        }
-      } catch (requestError) {
-        if (isCurrent) {
-          dispatch(
-            setEventsError(
-              requestError.response?.data?.message || "Could not load events.",
-            ),
-          );
-        }
-      }
+  function updateFilter(name, value) {
+    const params = new URLSearchParams(searchParams);
+    if (value === "all") {
+      params.delete(name);
+    } else {
+      params.set(name, value);
     }
+    setSearchParams(params);
+  }
 
-    loadEvents();
+  const now = new Date();
+  const searchText = search.trim().toLowerCase();
+  const filteredEvents = events.filter((event) => {
+    const isUpcoming = new Date(event.date) >= now;
+    const matchesType = selectedType === "all" || event.type === selectedType;
+    const matchesPeriod =
+      period === "all" || (period === "upcoming" && isUpcoming) || (period === "past" && !isUpcoming);
+    const matchesSearch =
+      !searchText ||
+      event.title.toLowerCase().includes(searchText) ||
+      event.location.toLowerCase().includes(searchText);
 
-    return () => {
-      isCurrent = false;
-    };
-  }, [dispatch]);
+    return matchesType && matchesPeriod && matchesSearch;
+  });
 
-  // Apply the selected event type without changing the saved Redux list.
-  const filteredEvents =
-    selectedType === "all"
-      ? events
-      : events.filter((event) => event.type === selectedType);
+  const upcoming = filteredEvents.filter((event) => new Date(event.date) >= now);
+  const past = filteredEvents
+    .filter((event) => new Date(event.date) < now)
+    .sort((a, b) => new Date(b.date) - new Date(a.date));
 
   return (
     <main className="page-container">
-      <header className="page-heading">
-        <div className="page-heading-copy">
-          <p className="eyebrow">Good miles. Great people.</p>
-          <h1>Your next finish line starts here.</h1>
-          <p>Find a run, meet your people, and make every mile count.</p>
-          <a className="hero-link" href="#club-events">
-            Explore club events <span aria-hidden="true">↓</span>
-          </a>
+      <header className="page-banner">
+        <div>
+          <p className="eyebrow">Club calendar</p>
+          <h1>All events</h1>
+          <p>Trainings, 10K races, trails and marathons organised by our members.</p>
         </div>
-        <div className="hero-note">
-          <span className="hero-note-icon" aria-hidden="true">✦</span>
-          <span>Every pace belongs.</span>
-        </div>
+        {user && (
+          <button type="button" onClick={() => setShowForm(!showForm)}>
+            {showForm ? "Close form" : "+ Create an event"}
+          </button>
+        )}
       </header>
 
-      {user && <EventForm />}
+      {user && showForm && <EventForm onCreated={() => setShowForm(false)} />}
 
-      <section className="events-section" id="club-events">
-        <div className="section-heading">
-          <div>
-            <p className="eyebrow">Make a plan</p>
-            <h2>Runs worth getting up for</h2>
-            <p>Pick your next adventure from {events.length} club events.</p>
-          </div>
+      <section className="filters-panel" aria-label="Event filters">
+        <label className="search-field">
+          Search
+          <input
+            type="search"
+            placeholder="Title or city: Tunis, Djerba, Tozeur..."
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+          />
+        </label>
 
-          <label>
-            Filter by type
-            <select
-              value={selectedType}
-              onChange={(event) => setSelectedType(event.target.value)}
+        <div className="chip-row" role="group" aria-label="Sport type">
+          <button
+            type="button"
+            className={`chip ${selectedType === "all" ? "active" : ""}`}
+            onClick={() => updateFilter("type", "all")}
+          >
+            All sports
+          </button>
+          {EVENT_TYPES.map((type) => (
+            <button
+              type="button"
+              key={type.value}
+              className={`chip ${selectedType === type.value ? "active" : ""}`}
+              onClick={() => updateFilter("type", type.value)}
             >
-              <option value="all">All types</option>
-              <option value="training">Training</option>
-              <option value="marathon">Marathon</option>
-              <option value="trail">Trail</option>
-              <option value="10K">10K</option>
-            </select>
-          </label>
+              {type.icon} {type.label}
+            </button>
+          ))}
         </div>
 
-        {loading && <p>Loading events...</p>}
-        {error && <p role="alert">{error}</p>}
-        {!loading && !error && filteredEvents.length === 0 && (
-          <div className="empty-events">
-            <span aria-hidden="true">🏃</span>
-            <h3>No runs on this route yet</h3>
-            <p>Try another event type, or check back soon for new club plans.</p>
-          </div>
-        )}
-
-        <div className="event-grid">
-          {filteredEvents.map((event) => (
-            <EventCard key={event._id} event={event} />
+        <div className="chip-row" role="group" aria-label="Period">
+          {PERIODS.map((item) => (
+            <button
+              type="button"
+              key={item.value}
+              className={`chip ${period === item.value ? "active" : ""}`}
+              onClick={() => updateFilter("period", item.value)}
+            >
+              {item.label}
+            </button>
           ))}
         </div>
       </section>
+
+      <p className="results-count">
+        Showing {filteredEvents.length} of {events.length} club events
+      </p>
+
+      {loading && events.length === 0 && (
+        <div className="event-grid">
+          {[1, 2, 3, 4].map((key) => (
+            <div className="event-skeleton" key={key} />
+          ))}
+        </div>
+      )}
+      {error && <p role="alert">{error}</p>}
+      {!loading && !error && filteredEvents.length === 0 && (
+        <div className="empty-events">
+          <span aria-hidden="true">🏃</span>
+          <h3>No runs on this route yet</h3>
+          <p>Try another filter, or check back soon for new club plans.</p>
+        </div>
+      )}
+
+      {upcoming.length > 0 && (
+        <section className="events-section">
+          <div className="section-heading">
+            <h2>Upcoming · {upcoming.length}</h2>
+          </div>
+          <div className="event-grid">
+            {upcoming.map((event) => (
+              <EventCard key={event._id} event={event} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {past.length > 0 && (
+        <section className="events-section">
+          <div className="section-heading">
+            <h2>Past events · {past.length}</h2>
+          </div>
+          <div className="event-grid">
+            {past.map((event) => (
+              <EventCard key={event._id} event={event} />
+            ))}
+          </div>
+        </section>
+      )}
     </main>
   );
 }

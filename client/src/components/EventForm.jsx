@@ -9,10 +9,12 @@ const initialForm = {
   date: "",
   location: "",
   distanceKm: "",
+  capacity: "50",
+  imageUrl: "",
   description: "",
 };
 
-export default function EventForm() {
+export default function EventForm({ onCreated }) {
   const [form, setForm] = useState(initialForm);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -34,9 +36,13 @@ export default function EventForm() {
         ...form,
         date: new Date(form.date).toISOString(),
         distanceKm: Number(form.distanceKm),
+        capacity: Number(form.capacity),
       });
       dispatch(addEvent(response.data));
       setForm(initialForm);
+      if (onCreated) {
+        onCreated();
+      }
     } catch (requestError) {
       setError(requestError.response?.data?.message || "Could not create the event.");
     } finally {
@@ -90,6 +96,30 @@ export default function EventForm() {
           value={form.distanceKm}
           onChange={handleChange}
           required
+        />
+      </label>
+
+      <label>
+        Spots available
+        <input
+          name="capacity"
+          type="number"
+          min="1"
+          step="1"
+          value={form.capacity}
+          onChange={handleChange}
+          required
+        />
+      </label>
+
+      <label>
+        Poster image URL (optional)
+        <input
+          name="imageUrl"
+          type="url"
+          placeholder="https://..."
+          value={form.imageUrl}
+          onChange={handleChange}
         />
       </label>
 

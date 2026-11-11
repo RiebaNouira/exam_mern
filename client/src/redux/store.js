@@ -1,10 +1,11 @@
 import { configureStore } from "@reduxjs/toolkit";
+import authReducer from "./authSlice";
 import eventsReducer from "./eventsSlice";
 import feedbackReducer from "./feedbackSlice";
 
-// Combine the event and feedback slices into the app-wide Redux store.
 export const store = configureStore({
   reducer: {
+    auth: authReducer,
     events: eventsReducer,
     feedback: feedbackReducer,
   },

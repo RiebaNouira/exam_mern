@@ -57,6 +57,16 @@ router.post("/events/:id/feedbacks", protect, async (req, res) => {
       return res.status(404).json({ message: "Event not found." });
     }
 
+    if (new Date(event.date) > new Date()) {
+      return res.status(400).json({ message: "You can review this event after it takes place." });
+    }
+
+    const existingFeedback = await Feedback.findOne({ event: event._id, author: req.user.id });
+
+    if (existingFeedback) {
+      return res.status(400).json({ message: "You have already reviewed this event." });
+    }
+
     const feedback = await Feedback.create({
       text: text.trim(),
       rating: numericRating,

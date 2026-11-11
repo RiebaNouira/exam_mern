@@ -1,7 +1,6 @@
 import { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import axiosClient from "../api/axiosClient";
-import { useAuth } from "../context/AuthContext";
 import {
   removeFeedback,
   setFeedback,
@@ -11,7 +10,7 @@ import {
 
 export default function FeedbackList({ eventId }) {
   const dispatch = useDispatch();
-  const { user } = useAuth();
+  const { user } = useSelector((state) => state.auth);
   const { items, loading, error } = useSelector((state) => state.feedback);
 
   // Only display feedback that belongs to this event.

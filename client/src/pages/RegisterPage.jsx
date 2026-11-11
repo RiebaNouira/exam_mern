@@ -1,19 +1,21 @@
+import { useDispatch, useSelector } from "react-redux";
 import { Link, Navigate, useNavigate } from "react-router-dom";
+import axiosClient from "../api/axiosClient";
 import RegisterForm from "../components/RegisterForm";
-import { useAuth } from "../context/AuthContext";
+import { loginSuccess } from "../redux/authSlice";
 
 export default function RegisterPage() {
-  const { user, register } = useAuth();
+  const { user } = useSelector((state) => state.auth);
+  const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  // Send an already signed-in member back to the event list.
   if (user) {
     return <Navigate to="/" replace />;
   }
 
-  // Create the account, save the login session, and return to events.
   async function handleRegister(name, email, password) {
-    await register(name, email, password);
+    const response = await axiosClient.post("/auth/register", { name, email, password });
+    dispatch(loginSuccess(response.data));
     navigate("/");
   }
 

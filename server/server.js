@@ -5,6 +5,10 @@ const connectDB = require("./config/db");
 const authRoutes = require("./routes/authRoutes");
 const eventRoutes = require("./routes/eventRoutes");
 const feedbackRoutes = require("./routes/feedbackRoutes");
+const registrationRoutes = require("./routes/registrationRoutes");
+const Event = require("./models/Event");
+const User = require("./models/User");
+const Registration = require("./models/Registration");
 
 // Load server settings from server/.env during local development.
 dotenv.config();
@@ -26,6 +30,28 @@ app.use("/api/events", eventRoutes);
 
 // Mount feedback listing/creation and deletion at their exact API paths.
 app.use("/api", feedbackRoutes);
+app.use("/api", registrationRoutes);
+
+app.get("/api/stats", async (req, res) => {
+  try {
+    const [events, members, registrations, distance] = await Promise.all([
+      Event.countDocuments(),
+      User.countDocuments(),
+      Registration.countDocuments(),
+      Event.aggregate([{ $group: { _id: null, total: { $sum: "$distanceKm" } } }]),
+    ]);
+
+    return res.status(200).json({
+      events,
+      members,
+      registrations,
+      totalKm: distance.length ? Math.round(distance[0].total) : 0,
+    });
+  } catch (error) {
+    console.error("Could not load stats:", error);
+    return res.status(500).json({ message: "Could not load stats." });
+  }
+});
 
 // Give the browser and deployment tools a simple way to check server availability.
 app.get("/api/health", (req, res) => {

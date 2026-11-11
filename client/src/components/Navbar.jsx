@@ -1,8 +1,10 @@
-import { Link } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import { useDispatch, useSelector } from "react-redux";
+import { Link, NavLink } from "react-router-dom";
+import { logout } from "../redux/authSlice";
 
 export default function Navbar() {
-  const { user, logout } = useAuth();
+  const { user } = useSelector((state) => state.auth);
+  const dispatch = useDispatch();
 
   return (
     <nav className="navbar" aria-label="Main navigation">
@@ -11,18 +13,24 @@ export default function Navbar() {
       </Link>
 
       <div className="navbar-links">
-        <Link to="/">Events</Link>
+        <NavLink to="/" end>
+          Home
+        </NavLink>
+        <NavLink to="/events">Events</NavLink>
         {user ? (
           <>
-            <span>Hi, {user.name}</span>
-            <button type="button" onClick={logout}>
+            <NavLink to="/me">My space</NavLink>
+            <span className="user-badge">Hi, {user.name}</span>
+            <button type="button" onClick={() => dispatch(logout())}>
               Log out
             </button>
           </>
         ) : (
           <>
-            <Link to="/login">Log in</Link>
-            <Link to="/register">Register</Link>
+            <NavLink to="/login">Log in</NavLink>
+            <NavLink className="nav-cta" to="/register">
+              Join the club
+            </NavLink>
           </>
         )}
       </div>

@@ -16,7 +16,13 @@ const eventsSlice = createSlice({
     },
     // Add a newly created event to the top of the list.
     addEvent: (state, action) => {
-      state.items.unshift(action.payload);
+      state.items.push(action.payload);
+      state.items.sort((a, b) => new Date(a.date) - new Date(b.date));
+    },
+    updateEvent: (state, action) => {
+      state.items = state.items.map((event) =>
+        event._id === action.payload._id ? { ...event, ...action.payload } : event,
+      );
     },
     // Remove an event from the list by its MongoDB ID.
     removeEvent: (state, action) => {
@@ -37,6 +43,7 @@ const eventsSlice = createSlice({
 export const {
   setEvents,
   addEvent,
+  updateEvent,
   removeEvent,
   setEventsLoading,
   setEventsError,

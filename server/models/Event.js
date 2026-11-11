@@ -30,6 +30,16 @@ const eventSchema = new mongoose.Schema({
     trim: true,
     default: "",
   },
+  capacity: {
+    type: Number,
+    min: 1,
+    default: 50,
+  },
+  imageUrl: {
+    type: String,
+    trim: true,
+    default: "",
+  },
   // This ObjectId links the event to the member who created it.
   author: {
     type: mongoose.Schema.Types.ObjectId,
